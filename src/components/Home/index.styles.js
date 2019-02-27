@@ -1,8 +1,14 @@
 import styled from 'styled-components';
 
+export const PixelatedImageWrappers = styled.div`
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+`;
+
 export const PixelatedImageWrapper = styled.div`
   order: 2;
-  margin: 0;
+  margin: 20px;
   display: grid;
   max-width: 100%;
   grid-template-rows: repeat(${({numRows, cellHeight}) => `${numRows}, ${cellHeight}`}px);
@@ -22,11 +28,14 @@ export const CellWrapper = styled.div`
   position: relative;
 `;
 
-export const Cell = styled.div`
+export const Cell = styled.div.attrs(({hexValue}) => ({
+  style: {
+    backgroundColor: hexValue,
+  },
+}))`
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: ${({hexValue}) => hexValue};
 `;

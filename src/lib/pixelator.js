@@ -35,6 +35,9 @@ const pixelate = (file, pixelDimensions) => {
       // Create a 2D array to store each pixel's hex value.
       const rawPixelBlocks = _.range(0, targetImageHeight).map(() => []);
 
+      // Keep track of each hex value.
+      const hexValuesSet = new Set();
+
       // Loop through each pixel in the desination image.
       for (let yCoord = 0; yCoord < targetImageHeight; ++yCoord) {
         for (let xCoord = 0; xCoord < targetImageWidth; ++xCoord) {
@@ -74,73 +77,98 @@ const pixelate = (file, pixelDimensions) => {
           const averageG = Math.round(totalG / pixelCount);
           const averageB = Math.round(totalB / pixelCount);
 
+          const hexValue = rgbToHex(averageR, averageG, averageB);
+
+          hexValuesSet.add(hexValue);
+
           rawPixelBlocks[yCoord][xCoord] = {
             red: averageR,
             green: averageG,
             blue: averageB,
-            hex: rgbToHex(averageR, averageG, averageB),
+            hex: hexValue,
           };
         }
       }
 
-      // We only have 10 unique digits to work with in our final image. So, we need to create
-      // another 2D array of the same size to store each pixel's hex value, but consolidate the
-      // colors to at most 10 unique hex values.
-      const finalPixelBlocks = _.range(0, rawPixelBlocks.length).map(() => []);
+      const hexValuesArray = Array.from(hexValuesSet);
 
-      // Loop through each existing raw pixel block and, if it is within a certain distance of
-      // another pixel block already seen, change its color. Until the resulting 2D contains at most
-      // 10 unique hex values, keep increasing the color distance.
-      let uniqueBlocks = [];
-      let requiredColorMatchDistance = INITIAL_COLOR_MATCH_DISTANCE;
-      while (uniqueBlocks.length === 0 || uniqueBlocks.length > 10) {
-        uniqueBlocks = [];
+      const pixelHexValueIndexes = _.range(0, rawPixelBlocks.length).map(() => []);
 
-        for (let i = 0; i < targetImageHeight; i++) {
-          for (let j = 0; j < targetImageWidth; j++) {
-            let rawPixelBlock = rawPixelBlocks[i][j];
-
-            let minExistingColorMatchDistance = requiredColorMatchDistance;
-
-            // Determine which of the existing unique blocks is closest to the raw pixel block,
-            // assuming any of them are closer than the required distance.
-            let normalizedPixelBlock = _.clone(rawPixelBlock);
-            uniqueBlocks.forEach((blockToCompare) => {
-              const distance = compareDistance(rawPixelBlock, blockToCompare);
-
-              if (distance < minExistingColorMatchDistance) {
-                normalizedPixelBlock = blockToCompare;
-                minExistingColorMatchDistance = distance;
-              }
-            });
-
-            finalPixelBlocks[i][j] = normalizedPixelBlock;
-
-            if (!_.includes(uniqueBlocks, normalizedPixelBlock)) {
-              uniqueBlocks.push(normalizedPixelBlock);
-            }
-          }
-        }
-
-        requiredColorMatchDistance += 1;
-      }
-
-      const hexValues = uniqueBlocks.map(({hex}) => hex);
-
-      const pixelHexValueIndexes = _.range(0, finalPixelBlocks.length).map(() => []);
-
-      finalPixelBlocks.forEach((row, i) => {
+      rawPixelBlocks.forEach((row, i) => {
         row.forEach(({hex: hexValue}, j) => {
-          pixelHexValueIndexes[i][j] = hexValues.indexOf(hexValue);
+          pixelHexValueIndexes[i][j] = hexValuesArray.indexOf(hexValue);
         });
       });
 
       return resolve({
-        hexValues,
+        hexValues: hexValuesArray,
+        rawPixelBlocks,
         pixelHexValueIndexes,
       });
     });
   });
 };
 
-export {pixelate};
+const reduceToTenOrFewerColors = (rawPixelBlocks) => {
+  const targetImageHeight = _.size(rawPixelBlocks);
+  const targetImageWidth = _.size(rawPixelBlocks[0]);
+
+  // We only have 10 unique digits to work with in our final image. So, we need to create
+  // another 2D array of the same size to store each pixel's hex value, but consolidate the
+  // colors to at most 10 unique hex values.
+  const finalPixelBlocks = _.range(0, rawPixelBlocks.length).map(() => []);
+
+  // Loop through each existing raw pixel block and, if it is within a certain distance of
+  // another pixel block already seen, change its color. Until the resulting 2D contains at most
+  // 10 unique hex values, keep increasing the color distance.
+  let uniqueBlocks = [];
+  let requiredColorMatchDistance = INITIAL_COLOR_MATCH_DISTANCE;
+  while (uniqueBlocks.length === 0 || uniqueBlocks.length > 10) {
+    uniqueBlocks = [];
+
+    for (let i = 0; i < targetImageHeight; i++) {
+      for (let j = 0; j < targetImageWidth; j++) {
+        let rawPixelBlock = rawPixelBlocks[i][j];
+
+        let minExistingColorMatchDistance = requiredColorMatchDistance;
+
+        // Determine which of the existing unique blocks is closest to the raw pixel block,
+        // assuming any of them are closer than the required distance.
+        let normalizedPixelBlock = _.clone(rawPixelBlock);
+        uniqueBlocks.forEach((blockToCompare) => {
+          const distance = compareDistance(rawPixelBlock, blockToCompare);
+
+          if (distance < minExistingColorMatchDistance) {
+            normalizedPixelBlock = blockToCompare;
+            minExistingColorMatchDistance = distance;
+          }
+        });
+
+        finalPixelBlocks[i][j] = normalizedPixelBlock;
+
+        if (!_.includes(uniqueBlocks, normalizedPixelBlock)) {
+          uniqueBlocks.push(normalizedPixelBlock);
+        }
+      }
+    }
+
+    requiredColorMatchDistance += 1;
+  }
+
+  const hexValues = uniqueBlocks.map(({hex}) => hex);
+
+  const pixelHexValueIndexes = _.range(0, finalPixelBlocks.length).map(() => []);
+
+  finalPixelBlocks.forEach((row, i) => {
+    row.forEach(({hex: hexValue}, j) => {
+      pixelHexValueIndexes[i][j] = hexValues.indexOf(hexValue);
+    });
+  });
+
+  return {
+    hexValues,
+    pixelHexValueIndexes,
+  };
+};
+
+export {pixelate, reduceToTenOrFewerColors};

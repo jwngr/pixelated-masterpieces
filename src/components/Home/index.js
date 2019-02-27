@@ -1,9 +1,9 @@
 import React from 'react';
 
-import {pixelate} from '../../lib/pixelator.js';
 import {getNumberWithCommas} from '../../lib/utils.js';
+import {pixelate, reduceToTenOrFewerColors} from '../../lib/pixelator.js';
 
-import {Cell, CellWrapper, PixelatedImageWrapper} from './index.styles';
+import {Cell, CellWrapper, PixelatedImageWrapper, PixelatedImageWrappers} from './index.styles';
 
 const PIXEL_DIMENSIONS = {
   width: 14,
@@ -26,27 +26,35 @@ const RANDOM_WORKS_OF_ART_FILENAMES = [
 
 class HomeScreen extends React.Component {
   state = {
-    hexValues: null,
+    original: null,
+    tenOrLess: null,
     errorMessage: null,
-    pixelHexValueIndexes: null,
   };
 
   componentDidMount() {
+    const state = {
+      errorMessage: null,
+    };
+
     return fetch(`/images/${RANDOM_WORKS_OF_ART_FILENAMES[3]}`)
-      .then((res) => {
-        return res.blob();
-      })
+      .then((res) => res.blob())
       .then(this.setSourceImageFromFileBlob)
-      .then((sourceImage) => {
-        return pixelate(sourceImage.fileUrl, PIXEL_DIMENSIONS);
+      .then((sourceImage) => pixelate(sourceImage.fileUrl, PIXEL_DIMENSIONS))
+      .then(({hexValues, rawPixelBlocks, pixelHexValueIndexes}) => {
+        state.original = {
+          hexValues,
+          pixelHexValueIndexes,
+        };
+
+        return reduceToTenOrFewerColors(rawPixelBlocks);
       })
       .then(({hexValues, pixelHexValueIndexes}) => {
-        console.log(hexValues, pixelHexValueIndexes);
-        this.setState({
+        state.tenOrLess = {
           hexValues,
-          errorMessage: null,
           pixelHexValueIndexes,
-        });
+        };
+
+        this.setState(state);
       })
       .catch((error) => {
         this.setState({
@@ -84,25 +92,34 @@ class HomeScreen extends React.Component {
   };
 
   render() {
-    const {hexValues, errorMessage, pixelHexValueIndexes} = this.state;
+    const {original, tenOrLess, errorMessage} = this.state;
 
     if (errorMessage) {
       return <p>ERROR! {errorMessage}</p>;
-    } else if (hexValues === null && pixelHexValueIndexes === null) {
+    } else if (original === null && tenOrLess === null) {
       return <p>Pixelating...</p>;
     }
 
-    const numRows = pixelHexValueIndexes.length;
-    const numColumns = pixelHexValueIndexes[0].length;
+    const numRows = original.pixelHexValueIndexes.length;
+    const numColumns = original.pixelHexValueIndexes[0].length;
 
-    const editorCells = [];
-    pixelHexValueIndexes.forEach((row, rowId) => {
+    const originalCells = [];
+    original.pixelHexValueIndexes.forEach((row, rowId) => {
       row.forEach((hexValueIndex, columnId) => {
-        const hexValue = hexValues[hexValueIndex];
+        originalCells.push(
+          <CellWrapper key={`original-cell-${rowId}-${columnId}`}>
+            <Cell hexValue={original.hexValues[hexValueIndex]} />
+          </CellWrapper>
+        );
+      });
+    });
 
-        editorCells.push(
-          <CellWrapper key={`cell-${rowId}-${columnId}`}>
-            <Cell hexValue={hexValue} />
+    const tenOrLessCells = [];
+    tenOrLess.pixelHexValueIndexes.forEach((row, rowId) => {
+      row.forEach((hexValueIndex, columnId) => {
+        tenOrLessCells.push(
+          <CellWrapper key={`ten-or-less-cell-${rowId}-${columnId}`}>
+            <Cell hexValue={tenOrLess.hexValues[hexValueIndex]} />
           </CellWrapper>
         );
       });
@@ -113,14 +130,25 @@ class HomeScreen extends React.Component {
         <p>
           {numRows} &times; {numColumns} ({getNumberWithCommas(numRows * numColumns)} cells)
         </p>
-        <PixelatedImageWrapper
-          numRows={numRows}
-          numColumns={numColumns}
-          cellWidth={12}
-          cellHeight={12}
-        >
-          {editorCells}
-        </PixelatedImageWrapper>
+
+        <PixelatedImageWrappers>
+          <PixelatedImageWrapper
+            numRows={numRows}
+            numColumns={numColumns}
+            cellWidth={12}
+            cellHeight={12}
+          >
+            {originalCells}
+          </PixelatedImageWrapper>
+          <PixelatedImageWrapper
+            numRows={numRows}
+            numColumns={numColumns}
+            cellWidth={12}
+            cellHeight={12}
+          >
+            {tenOrLessCells}
+          </PixelatedImageWrapper>
+        </PixelatedImageWrappers>
       </>
     );
   }
