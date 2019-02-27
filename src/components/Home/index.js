@@ -1,9 +1,19 @@
 import React from 'react';
 
 import {getNumberWithCommas} from '../../lib/utils.js';
-import {pixelate, reduceToTenOrFewerColors} from '../../lib/pixelator.js';
+import {
+  pixelate,
+  reduceToTenOrFewerColors,
+  reduceToRustoleum2XUltraCoverGlossSprayPaintColors,
+} from '../../lib/pixelator.js';
 
-import {Cell, CellWrapper, PixelatedImageWrapper, PixelatedImageWrappers} from './index.styles';
+import {
+  Cell,
+  CellWrapper,
+  PixelateButton,
+  PixelatedImageWrapper,
+  PixelatedImageWrappers,
+} from './index.styles';
 
 const PIXEL_DIMENSIONS = {
   width: 14,
@@ -29,9 +39,15 @@ class HomeScreen extends React.Component {
     original: null,
     tenOrLess: null,
     errorMessage: null,
+    pixelateButtonClicked: false,
+    rustoleum2XUltraCoverGloss: null,
   };
 
-  componentDidMount() {
+  generatePixelatedImages = () => {
+    this.setState({
+      pixelateButtonClicked: true,
+    });
+
     const state = {
       errorMessage: null,
     };
@@ -46,13 +62,14 @@ class HomeScreen extends React.Component {
           pixelHexValueIndexes,
         };
 
-        return reduceToTenOrFewerColors(rawPixelBlocks);
+        return Promise.all([
+          reduceToTenOrFewerColors(rawPixelBlocks),
+          reduceToRustoleum2XUltraCoverGlossSprayPaintColors(rawPixelBlocks),
+        ]);
       })
-      .then(({hexValues, pixelHexValueIndexes}) => {
-        state.tenOrLess = {
-          hexValues,
-          pixelHexValueIndexes,
-        };
+      .then(([tenOrLess, rustoleum2XUltraCoverGloss]) => {
+        state.tenOrLess = tenOrLess;
+        state.rustoleum2XUltraCoverGloss = rustoleum2XUltraCoverGloss;
 
         this.setState(state);
       })
@@ -61,7 +78,7 @@ class HomeScreen extends React.Component {
           errorMessage: error.message,
         });
       });
-  }
+  };
 
   setSourceImageFromFileBlob = (fileBlob) => {
     return new Promise((resolve, reject) => {
@@ -92,11 +109,24 @@ class HomeScreen extends React.Component {
   };
 
   render() {
-    const {original, tenOrLess, errorMessage} = this.state;
+    const {
+      original,
+      tenOrLess,
+      errorMessage,
+      pixelateButtonClicked,
+      rustoleum2XUltraCoverGloss,
+    } = this.state;
 
     if (errorMessage) {
       return <p>ERROR! {errorMessage}</p>;
-    } else if (original === null && tenOrLess === null) {
+    } else if (!pixelateButtonClicked) {
+      return <PixelateButton onClick={this.generatePixelatedImages}>Pixelate!</PixelateButton>;
+    } else if (
+      pixelateButtonClicked &&
+      original === null &&
+      tenOrLess === null &&
+      rustoleum2XUltraCoverGloss === null
+    ) {
       return <p>Pixelating...</p>;
     }
 
@@ -125,6 +155,17 @@ class HomeScreen extends React.Component {
       });
     });
 
+    const rustoleum2XUltraCoverGlossCells = [];
+    rustoleum2XUltraCoverGloss.pixelHexValueIndexes.forEach((row, rowId) => {
+      row.forEach((hexValueIndex, columnId) => {
+        rustoleum2XUltraCoverGlossCells.push(
+          <CellWrapper key={`rustoleum-2x-ultra-cover-gloss-cell-${rowId}-${columnId}`}>
+            <Cell hexValue={rustoleum2XUltraCoverGloss.hexValues[hexValueIndex]} />
+          </CellWrapper>
+        );
+      });
+    });
+
     return (
       <>
         <p>
@@ -147,6 +188,14 @@ class HomeScreen extends React.Component {
             cellHeight={12}
           >
             {tenOrLessCells}
+          </PixelatedImageWrapper>
+          <PixelatedImageWrapper
+            numRows={numRows}
+            numColumns={numColumns}
+            cellWidth={12}
+            cellHeight={12}
+          >
+            {rustoleum2XUltraCoverGlossCells}
           </PixelatedImageWrapper>
         </PixelatedImageWrappers>
       </>

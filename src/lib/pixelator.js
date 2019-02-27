@@ -1,7 +1,8 @@
 import _ from 'lodash';
 import getPixels from 'get-pixels';
 
-import {rgbToHex, compareDistance} from './utils.js';
+import {hexToRgb, rgbToHex, compareDistance} from './utils.js';
+import {RUSTOLEUM_2X_ULTRA_COVER_GLOSS_SPRAY_PAINT_COLORS} from './constants.js';
 
 const INITIAL_COLOR_MATCH_DISTANCE = 1;
 
@@ -171,4 +172,58 @@ const reduceToTenOrFewerColors = (rawPixelBlocks) => {
   };
 };
 
-export {pixelate, reduceToTenOrFewerColors};
+const reduceToRustoleum2XUltraCoverGlossSprayPaintColors = (rawPixelBlocks) => {
+  const targetImageHeight = _.size(rawPixelBlocks);
+  const targetImageWidth = _.size(rawPixelBlocks[0]);
+
+  // Keep track of each hex value.
+  const hexValuesSet = new Set();
+
+  // We only have 10 unique digits to work with in our final image. So, we need to create
+  // another 2D array of the same size to store each pixel's hex value, but consolidate the
+  // colors to at most 10 unique hex values.
+  const finalPixelBlocks = _.range(0, rawPixelBlocks.length).map(() => []);
+
+  // Loop through the Rustoleum colors and determine which one is closest to the raw hex value.
+  for (let i = 0; i < targetImageHeight; i++) {
+    for (let j = 0; j < targetImageWidth; j++) {
+      let normalizedPixelBlock = null;
+      let minColorMatchDistance = Infinity;
+
+      RUSTOLEUM_2X_ULTRA_COVER_GLOSS_SPRAY_PAINT_COLORS.forEach((rustoleumHexValue) => {
+        const rustoleumBlock = {
+          hex: rustoleumHexValue,
+          ...hexToRgb(rustoleumHexValue),
+        };
+
+        const distance = compareDistance(rawPixelBlocks[i][j], rustoleumBlock);
+
+        if (distance < minColorMatchDistance) {
+          normalizedPixelBlock = rustoleumBlock;
+          minColorMatchDistance = distance;
+        }
+      });
+
+      finalPixelBlocks[i][j] = normalizedPixelBlock;
+
+      hexValuesSet.add(normalizedPixelBlock.hex);
+    }
+  }
+
+  const hexValuesArray = Array.from(hexValuesSet);
+
+  const pixelHexValueIndexes = _.range(0, finalPixelBlocks.length).map(() => []);
+
+  finalPixelBlocks.forEach((row, i) => {
+    row.forEach(({hex: hexValue}, j) => {
+      pixelHexValueIndexes[i][j] = hexValuesArray.indexOf(hexValue);
+    });
+  });
+
+  return {
+    pixelHexValueIndexes,
+    hexValues: hexValuesArray,
+  };
+};
+
+export {pixelate, reduceToTenOrFewerColors, reduceToRustoleum2XUltraCoverGlossSprayPaintColors};

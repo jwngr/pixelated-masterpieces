@@ -24,6 +24,12 @@ export const PixelatedImageWrapper = styled.div`
   }
 `;
 
+export const PixelateButton = styled.button`
+  padding: 20px;
+  font-size: 40px;
+  margin: 20px;
+`;
+
 export const CellWrapper = styled.div`
   position: relative;
 `;
