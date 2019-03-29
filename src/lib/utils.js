@@ -39,8 +39,24 @@ const compareDistance = (color1, color2) => {
   return Math.sqrt(sum / conversionIndex);
 };
 
+const compareDistance2 = (color1, color2) => {
+  if (color1.hex === color2.hex) {
+    return 0;
+  }
+
+  const redMean = (color1.red + color2.red) / 2.0;
+  const redDifference = color1.red - color2.red;
+  const greenDifference = color1.green - color2.green;
+  const blueDifferenece = color1.blue - color2.blue;
+  return Math.sqrt(
+    (((512 + redMean) * redDifference * redDifference) >> 8) +
+      4 * greenDifference * greenDifference +
+      (((767 - redMean) * blueDifferenece * blueDifferenece) >> 8)
+  );
+};
+
 const getNumberWithCommas = (val) => {
   return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 };
 
-export {getHsp, rgbToHex, hexToRgb, compareDistance, getNumberWithCommas};
+export {getHsp, rgbToHex, hexToRgb, compareDistance, compareDistance2, getNumberWithCommas};

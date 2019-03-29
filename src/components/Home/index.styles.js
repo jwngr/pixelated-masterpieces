@@ -7,20 +7,12 @@ export const PixelatedImageWrappers = styled.div`
 `;
 
 export const PixelatedImageWrapper = styled.div`
-  order: 2;
-  margin: 20px;
-  display: grid;
-  max-width: 100%;
-  grid-template-rows: repeat(${({numRows, cellHeight}) => `${numRows}, ${cellHeight}`}px);
-  grid-template-columns: repeat(${({numColumns, cellWidth}) => `${numColumns}, ${cellWidth}`}px);
-
-  @media (max-width: 1200px) {
-    margin: 0;
-  }
-
-  @media (max-width: 768px) {
-    order: 1;
-    margin-bottom: 12px;
+  & > div {
+    margin: 20px;
+    display: grid;
+    max-width: 100%;
+    grid-template-rows: repeat(${({numRows, cellHeight}) => `${numRows}, ${cellHeight}`}px);
+    grid-template-columns: repeat(${({numColumns, cellWidth}) => `${numColumns}, ${cellWidth}`}px);
   }
 `;
 
@@ -44,4 +36,18 @@ export const Cell = styled.div.attrs(({hexValue}) => ({
   left: 0;
   right: 0;
   bottom: 0;
+`;
+
+export const Swatch = styled.div`
+  width: 20px;
+  height: 20px;
+  display: flex;
+  margin-right: 10px;
+  background-color: ${({hexValue}) => hexValue};
+`;
+
+export const SwatchWrapper = styled.div`
+  display: flex;
+  margin: 8px;
+  flex-direction: row;
 `;

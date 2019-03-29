@@ -1,8 +1,11 @@
 import _ from 'lodash';
 import getPixels from 'get-pixels';
 
-import {hexToRgb, rgbToHex, compareDistance} from './utils.js';
-import {RUSTOLEUM_2X_ULTRA_COVER_GLOSS_SPRAY_PAINT_COLORS} from './constants.js';
+import {hexToRgb, rgbToHex, compareDistance, compareDistance2} from './utils.js';
+import {
+  RUSTOLEUM_ENAMEL_SPRAY_PAINT_COLORS,
+  RUSTOLEUM_2X_ULTRA_COVER_GLOSS_SPRAY_PAINT_COLORS,
+} from './constants.js';
 
 const INITIAL_COLOR_MATCH_DISTANCE = 1;
 
@@ -110,7 +113,7 @@ const pixelate = (file, pixelDimensions) => {
   });
 };
 
-const reduceToTenOrFewerColors = (rawPixelBlocks) => {
+const reduceToColorCount = (rawPixelBlocks, maxColorCount) => {
   const targetImageHeight = _.size(rawPixelBlocks);
   const targetImageWidth = _.size(rawPixelBlocks[0]);
 
@@ -124,7 +127,7 @@ const reduceToTenOrFewerColors = (rawPixelBlocks) => {
   // 10 unique hex values, keep increasing the color distance.
   let uniqueBlocks = [];
   let requiredColorMatchDistance = INITIAL_COLOR_MATCH_DISTANCE;
-  while (uniqueBlocks.length === 0 || uniqueBlocks.length > 10) {
+  while (uniqueBlocks.length === 0 || uniqueBlocks.length > maxColorCount) {
     uniqueBlocks = [];
 
     for (let i = 0; i < targetImageHeight; i++) {
@@ -172,7 +175,7 @@ const reduceToTenOrFewerColors = (rawPixelBlocks) => {
   };
 };
 
-const reduceToRustoleum2XUltraCoverGlossSprayPaintColors = (rawPixelBlocks) => {
+const _reduceToRustoleumSprayPaintColorsHelper = (rawPixelBlocks, rustoleumColors) => {
   const targetImageHeight = _.size(rawPixelBlocks);
   const targetImageWidth = _.size(rawPixelBlocks[0]);
 
@@ -190,19 +193,39 @@ const reduceToRustoleum2XUltraCoverGlossSprayPaintColors = (rawPixelBlocks) => {
       let normalizedPixelBlock = null;
       let minColorMatchDistance = Infinity;
 
-      RUSTOLEUM_2X_ULTRA_COVER_GLOSS_SPRAY_PAINT_COLORS.forEach((rustoleumHexValue) => {
+      const shouldLog = i === 0 && j === 4;
+
+      const values = [];
+      if (shouldLog) {
+        console.log('ACTUAL:', rawPixelBlocks[i][j].hex);
+      }
+
+      rustoleumColors.forEach((rustoleumHexValue) => {
+        if (shouldLog) {
+          console.log('HEX:', rustoleumHexValue);
+        }
+
         const rustoleumBlock = {
           hex: rustoleumHexValue,
           ...hexToRgb(rustoleumHexValue),
         };
 
-        const distance = compareDistance(rawPixelBlocks[i][j], rustoleumBlock);
+        const distance = compareDistance2(rawPixelBlocks[i][j], rustoleumBlock);
+
+        if (shouldLog) {
+          values.push({hex: rustoleumHexValue, distance});
+          console.log(rustoleumHexValue, distance);
+        }
 
         if (distance < minColorMatchDistance) {
           normalizedPixelBlock = rustoleumBlock;
           minColorMatchDistance = distance;
         }
       });
+
+      if (shouldLog) {
+        console.log(JSON.stringify(_.sortBy(values, 'distance')));
+      }
 
       finalPixelBlocks[i][j] = normalizedPixelBlock;
 
@@ -226,4 +249,23 @@ const reduceToRustoleum2XUltraCoverGlossSprayPaintColors = (rawPixelBlocks) => {
   };
 };
 
-export {pixelate, reduceToTenOrFewerColors, reduceToRustoleum2XUltraCoverGlossSprayPaintColors};
+const reduceToRustoleumEnamelSprayPaintColors = (rawPixelBlocks) => {
+  return _reduceToRustoleumSprayPaintColorsHelper(
+    rawPixelBlocks,
+    RUSTOLEUM_ENAMEL_SPRAY_PAINT_COLORS
+  );
+};
+
+const reduceToRustoleum2XUltraCoverGlossSprayPaintColors = (rawPixelBlocks) => {
+  return _reduceToRustoleumSprayPaintColorsHelper(
+    rawPixelBlocks,
+    RUSTOLEUM_2X_ULTRA_COVER_GLOSS_SPRAY_PAINT_COLORS
+  );
+};
+
+export {
+  pixelate,
+  reduceToColorCount,
+  reduceToRustoleumEnamelSprayPaintColors,
+  reduceToRustoleum2XUltraCoverGlossSprayPaintColors,
+};
